@@ -7,7 +7,7 @@ import torch
 from PIL import Image, ImageDraw, ImageFont
 
 # OwlViT Detection
-from transformers import OwlViTProcessor, OwlViTForObjectDetection
+from transformers import Owlv2Processor, Owlv2ForObjectDetection
 
 # segment anything
 from segment_anything import build_sam, SamPredictor 
@@ -67,12 +67,12 @@ def plot_boxes_to_image(image_pil, tgt):
 
     return image_pil, mask
 
-def load_owlvit(checkpoint_path="owlvit-large-patch14", device='cpu'):
+def load_owlvit(checkpoint_path="owlv2-large-patch14", device='cpu'):
     """
     Return: model, processor (for text inputs)
     """
-    processor = OwlViTProcessor.from_pretrained(f"google/{checkpoint_path}")
-    model = OwlViTForObjectDetection.from_pretrained(f"google/{checkpoint_path}")
+    processor = Owlv2Processor.from_pretrained(f"google/{checkpoint_path}")
+    model = Owlv2ForObjectDetection.from_pretrained(f"google/{checkpoint_path}")
     model.to(device)
     model.eval()
     
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_dir", "-o", type=str, default="outputs", required=True, help="output directory"
     )
-    parser.add_argument('--owlvit_model', help='select model', default="owlvit-base-patch32", choices=["owlvit-base-patch32", "owlvit-base-patch16", "owlvit-large-patch14"])
+    parser.add_argument('--owlvit_model', help='select model', default="owlv2-large-patch14", choices=["owlv2-large-patch14", "owlv2-base-patch16"])
     parser.add_argument("--box_threshold", type=float, default=0.0, help="box threshold")
     parser.add_argument('--get_topk', help='detect topk boxes per class or not', action="store_true")
     parser.add_argument('--device', help='select device', default="cuda:0", type=str)
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     # Convert outputs (bounding boxes and class logits) to COCO API
     results = processor.post_process_object_detection(outputs=outputs, threshold=box_threshold, target_sizes=target_sizes.to(args.device))
     scores = torch.sigmoid(outputs.logits)
-    topk_scores, topk_idxs = torch.topk(scores, k=1, dim=1)
+    topk_scores, topk_idxs = torch.topk(scores, k=5, dim=1)
     
     i = 0  # Retrieve predictions for the first image for the corresponding text queries
     text = texts[i]
