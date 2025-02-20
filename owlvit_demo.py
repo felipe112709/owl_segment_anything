@@ -137,9 +137,8 @@ if __name__ == "__main__":
     else:
         boxes, scores, labels = results[i]["boxes"], results[i]["scores"], results[i]["labels"]
     
-
     # Print detected objects and rescaled box coordinates
-    for box, score, label in zip(boxes, scores, labels):
+    for box, score, label in zip(boxes.squeeze(1), scores.squeeze(0), labels.squeeze(1)):
         box = [round(i, 2) for i in box.tolist()]
         print(f"Detected {text[label]} with confidence {round(score.item(), 3)} at location {box}")
 
@@ -148,12 +147,13 @@ if __name__ == "__main__":
     
     # # visualize pred
     size = image.size
+
     pred_dict = {
         "boxes": normalized_boxes,
         "size": [size[1], size[0]], # H, W
         "labels": [text[idx] for idx in labels]
     }
-
+    
     # release the OWL-ViT
     model.cpu()
     del model
@@ -174,7 +174,6 @@ if __name__ == "__main__":
     boxes = torch.tensor(boxes, device=predictor.device)
 
     transformed_boxes = predictor.transform.apply_boxes_torch(boxes, image.shape[:2])
-    
     masks, _, _ = predictor.predict_torch(
         point_coords = None,
         point_labels = None,
@@ -183,14 +182,17 @@ if __name__ == "__main__":
     )
     plt.figure(figsize=(10, 10))
     plt.imshow(image)
+
     for mask in masks:
         show_mask(mask.cpu().numpy(), plt.gca(), random_color=True)
     for box in boxes:
-        show_box(box.numpy(), plt.gca())
+        show_box(box.squeeze().numpy(), plt.gca())
     plt.axis('off')
     plt.savefig(f"./{output_dir}/owlvit_segment_anything_output.jpg")
 
     # grounded results
+    pred_dict["boxes"] = np.squeeze(pred_dict["boxes"])
+
     image_pil = Image.open(args.image_path)
     image_with_box = plot_boxes_to_image(image_pil, pred_dict)[0]
     image_with_box.save(os.path.join(f"./{output_dir}/owlvit_box.jpg"))
